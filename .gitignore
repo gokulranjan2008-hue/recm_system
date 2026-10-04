@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+water_rag_db/
+
