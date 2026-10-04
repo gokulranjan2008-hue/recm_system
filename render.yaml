@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: water-rag-recommendation-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HF_TOKEN
+        sync: false

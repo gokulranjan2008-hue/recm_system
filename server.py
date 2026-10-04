@@ -1,3 +1,10 @@
+try:
+    __import__("pysqlite3")
+    import sys
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+except ImportError:
+    pass
+
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -53,6 +60,18 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Water Quality Cloud RAG", lifespan=lifespan)
+
+@app.get("/")
+def read_root():
+    return {
+        "status": "healthy",
+        "service": "Water Quality Potability & Treatment Recommendation API",
+        "docs_url": "/docs"
+    }
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 llm = HuggingFaceEndpoint(
     repo_id="microsoft/Phi-3-mini-4k-instruct",

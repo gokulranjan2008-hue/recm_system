@@ -8,3 +8,4 @@ langchain-huggingface
 huggingface-hub
 pypdf
 python-dotenv
+pysqlite3-binary; sys_platform == 'linux'
