@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PDF_PATH = os.path.join(BASE_DIR, "water_rag")
+PDF_PATH = os.path.join(BASE_DIR, "water_rag.pdf")
 DB_DIR = os.path.join(BASE_DIR, "water_rag_db")
 vector_db = None
 
