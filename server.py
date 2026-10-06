@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PDF_PATH = os.path.join(BASE_DIR, "ESP32-S3 Water Potability & Treatment Guidelines (Comprehensive).pdf")
+PDF_PATH = os.path.join(BASE_DIR, "Water Potability & Treatment Guidelines")
 DB_DIR = os.path.join(BASE_DIR, "water_rag_db")
 vector_db = None
 
