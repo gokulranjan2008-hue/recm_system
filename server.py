@@ -124,8 +124,19 @@ async def get_recommendation(data: WaterData):
         docs = vector_db.similarity_search(search_query, k=2)
         retrieved_text = "\n".join([d.page_content for d in docs])
 
-    prompt = f"Context from Knowledge Base:\n{retrieved_text}\n\nFailed Parameters: {', '.join(failed_params)}.\nBased ONLY on the context, provide a maximum 10-word cause and a maximum 10-word recommendation. Format strictly as:\nCause: [text]\nRecommendation: [text]"
-    
+    prompt = f"""Context from Knowledge Base:
+{retrieved_text}
+
+Failed Parameters: {', '.join(failed_params)}.
+Based ONLY on the context, provide the root cause and a 3-step action plan.
+Format strictly as:
+Cause:
+- [1-point concise cause]
+
+Recommendation:
+1. [First action step]
+2. [Second action step]
+3. [Third action step]"""
     client = get_hf_client()
     ai_output = None
     if client:
@@ -133,7 +144,7 @@ async def get_recommendation(data: WaterData):
             response = client.chat_completion(
                 model="Qwen/Qwen2.5-72B-Instruct",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=60,
+                max_tokens=200,
                 temperature=0.1
             )
             ai_output = response.choices[0].message.content
