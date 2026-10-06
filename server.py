@@ -128,15 +128,17 @@ async def get_recommendation(data: WaterData):
 {retrieved_text}
 
 Failed Parameters: {', '.join(failed_params)}.
-Based ONLY on the context, provide the root cause and a 3-step action plan.
+Based ONLY on the context, provide a root cause and exactly 3 recommendation steps.
+CRITICAL: To fit on a small microcontroller screen, keep the cause and EACH recommendation step strictly under 8 words. Do not use long sentences.
+
 Format strictly as:
 Cause:
-- [1-point concise cause]
+- [Short cause under]
 
 Recommendation:
-1. [First action step]
-2. [Second action step]
-3. [Third action step]"""
+1. [Short step under 10 words]
+2. [Short step under 10 words]
+3. [Short step under 10 words]"""
     client = get_hf_client()
     ai_output = None
     if client:

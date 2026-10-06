@@ -26,14 +26,14 @@ embeddings = HuggingFaceEndpointEmbeddings(
 )
 
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=500, chunk_overlap=100,
+    chunk_size=500, chunk_overlap=100,  
     separators=["\n\nCondition:", "\n\nRule", "\n\n", "\n", " "]
 )
 chunks = text_splitter.split_documents(documents)
 vector_db = Chroma.from_documents(documents=chunks, embedding=embeddings, persist_directory=DB_DIR)
 
 # Test input: Acidic water (pH 5.8)
-test_ph, test_tds, test_ec = 5.8, 250.0, 0.5
+test_ph, test_tds, test_ec =6.5 , 250.0, 0.5
 failed_params, search_query = extract_conditions(test_ph, test_tds, test_ec)
 
 print(f"Extracted Failed Parameters: {failed_params}")
@@ -51,14 +51,28 @@ from huggingface_hub import InferenceClient
 # Use Hugging Face's native client for conversational models
 client = InferenceClient(token=os.getenv("HF_TOKEN"))
 
-prompt = f"Context from Knowledge Base:\n{retrieved_text}\n\nFailed Parameters: {', '.join(failed_params)}.\nBased ONLY on the context, provide a maximum 10-word cause and a maximum 10-word recommendation."
+prompt = f"""Context from Knowledge Base:
+{retrieved_text}
+
+Failed Parameters: {', '.join(failed_params)}.
+Based ONLY on the context, provide a root cause and exactly 3 recommendation steps.
+CRITICAL: To fit on a small microcontroller screen, keep the cause with no sensor malfunction and EACH recommendation step. Uselong sentences.
+
+Format strictly as:
+Cause:
+- [Short cause]
+
+Recommendation:
+1. [Short step under 10 words]
+2. [Short step under 10 words
+3. [Short step under 10 words]"""
 
 # Call the chat_completion API instead of text-generation
 # Call the chat_completion API with a supported free-tier model
 response = client.chat_completion(
     model="Qwen/Qwen2.5-72B-Instruct", 
     messages=[{"role": "user", "content": prompt}],
-    max_tokens=50,
+    max_tokens=200,
     temperature=0.1
 )
 
