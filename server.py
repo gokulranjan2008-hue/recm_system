@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PDF_PATH = os.path.join(BASE_DIR, "Water Potability & Treatment Guidelines")
+PDF_PATH = os.path.join(BASE_DIR, "water_rag")
 DB_DIR = os.path.join(BASE_DIR, "water_rag_db")
 vector_db = None
 
