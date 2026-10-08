@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings # Switched to local embeddings
 from langchain_chroma import Chroma
 from huggingface_hub import InferenceClient
 
@@ -46,10 +46,9 @@ async def lifespan(app: FastAPI):
     global vector_db
     print("Initializing Cloud Vector DB...")
     
-    hf_token = os.getenv("HF_TOKEN")
-    embeddings = HuggingFaceEndpointEmbeddings(
-        model="sentence-transformers/all-MiniLM-L6-v2",
-        huggingfacehub_api_token=hf_token
+    # Initialize the model locally instead of querying the Hugging Face API
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
     if os.path.exists(DB_DIR) and os.listdir(DB_DIR):
@@ -139,6 +138,7 @@ Recommendation:
 1. [Short step under 10 words]
 2. [Short step under 10 words]
 3. [Short step under 10 words]"""
+    
     client = get_hf_client()
     ai_output = None
     if client:
