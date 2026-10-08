@@ -9,4 +9,6 @@ huggingface-hub
 pypdf
 python-dotenv
 pysqlite3-binary; sys_platform == 'linux'
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 sentence-transformers
