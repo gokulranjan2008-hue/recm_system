@@ -195,10 +195,10 @@ Cause:
 - [Short, concise technical cause summary]
 
 Recommendation:
-1. [Concise technical step]
-2. [Concise technical step]
-3. [Concise technical step]"""
-    
+1. [Detailed technical step]
+2. [Detailed technical step]
+3. [Detailed technical step]"""
+
     llm = get_llm()
     ai_output = None
     if llm:
