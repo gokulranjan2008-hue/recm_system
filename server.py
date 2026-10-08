@@ -187,17 +187,17 @@ async def get_recommendation(data: WaterData):
 {retrieved_text}
 
 Failed Parameters: {', '.join(failed_params)}.
-Based ONLY on the context, provide a root cause and exactly 3 recommendation steps. 
-Use the exact technical terminology, hardware specifications, and chemical treatments mentioned in the text. 
+Based ONLY on the context, provide a highly detailed root cause and exactly 3 comprehensive recommendation steps.
+CRITICAL: Do NOT include or repeat live sensor readings. Instead, explicitly include the Knowledge Base threshold ranges, ideal target parameters, exact hardware specifications, chemical names, and physical/health risks.
 
 Format strictly as:
 Cause:
-- [Technical cause]
+- [Detailed technical cause including parameter threshold ranges, violation classification, and physical/health risks]
 
 Recommendation:
-1. [Technical step 1]
-2. [Technical step 2]
-3. [Technical step 3]"""
+1. [Detailed technical step including exact hardware specifications, chemical names, and target parameter values]
+2. [Detailed technical step detailing equipment mechanisms, maintenance intervals, or dosing protocols]
+3. [Detailed technical step focusing on operational limits, hazard mitigation, or telemetry monitoring]"""
     
     llm = get_llm()
     ai_output = None
