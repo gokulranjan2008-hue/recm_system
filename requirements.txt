@@ -6,6 +6,7 @@ langchain-community
 langchain-chroma
 langchain-text-splitters
 pypdf
-huggingface-hub
 python-dotenv
 langchain-google-genai
+google-genai
+pysqlite3-binary; sys_platform == "linux"

@@ -6,6 +6,7 @@ except ImportError:
     pass
 
 import os
+import shutil
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -14,10 +15,8 @@ from pydantic import BaseModel
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-# Remove: from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_chroma import Chroma
-from huggingface_hub import InferenceClient
 
 from dotenv import load_dotenv
 
@@ -29,6 +28,17 @@ DB_DIR = os.path.join(BASE_DIR, "water_rag_db")
 vector_db = None
 
 logger = logging.getLogger("uvicorn")
+
+# Normalize Gemini API key from various common env variable names
+GEMINI_KEY = (
+    os.getenv("GEMINI_API_KEY")
+    or os.getenv("GOOGLE_API_KEY")
+    or os.getenv("GOOGLE_API")
+)
+if GEMINI_KEY:
+    os.environ["GOOGLE_API_KEY"] = GEMINI_KEY
+    if "GEMINI_API_KEY" in os.environ:
+        del os.environ["GEMINI_API_KEY"]
 
 class WaterData(BaseModel):
     ph: float
@@ -42,31 +52,60 @@ class RecommendationResponse(BaseModel):
     cause: str
     recommendation: str
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def init_vector_db():
     global vector_db
-    print("Initializing Cloud Vector DB...")
-    
-    # Initialize the model locally instead of querying the Hugging Face API
+    if not GEMINI_KEY:
+        logger.warning("No Gemini API key configured. Vector DB initialization deferred.")
+        return
+
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001"
+        model="models/gemini-embedding-001",
+        google_api_key=GEMINI_KEY,
     )
 
+    should_build = False
     if os.path.exists(DB_DIR) and os.listdir(DB_DIR):
-        print(f"Loading existing Vector DB from {DB_DIR}...")
-        vector_db = Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
+        try:
+            logger.info(f"Loading existing Vector DB from {DB_DIR}...")
+            vector_db = Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
+            # Perform a test search to verify collection dimensions match
+            vector_db.similarity_search("water test", k=1)
+            logger.info("Existing Vector DB loaded successfully.")
+        except Exception as e:
+            logger.warning(f"Existing Vector DB incompatible or corrupt ({e}). Rebuilding...")
+            should_build = True
+            vector_db = None
     else:
-        print("Building Vector DB from PDF...")
+        should_build = True
+
+    if should_build:
+        if os.path.exists(DB_DIR):
+            try:
+                shutil.rmtree(DB_DIR)
+            except Exception as e:
+                logger.warning(f"Could not remove existing DB_DIR: {e}")
+
+        logger.info(f"Building Vector DB from {PDF_PATH}...")
         loader = PyPDFLoader(PDF_PATH)
         documents = loader.load()
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500, chunk_overlap=100,
+            chunk_size=500,
+            chunk_overlap=100,
             separators=["\n\nCondition:", "\n\nRule", "\n\n", "\n", " "]
         )
         chunks = text_splitter.split_documents(documents)
-        vector_db = Chroma.from_documents(documents=chunks, embedding=embeddings, persist_directory=DB_DIR)
+        vector_db = Chroma.from_documents(
+            documents=chunks,
+            embedding=embeddings,
+            persist_directory=DB_DIR
+        )
+        logger.info("Vector database built and persisted.")
 
-    print("Vector database ready.")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initializing Cloud Vector DB with Gemini...")
+    init_vector_db()
+    logger.info("Vector database initialization complete.")
     yield
 
 app = FastAPI(title="Water Quality Cloud RAG", lifespan=lifespan)
@@ -80,21 +119,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_hf_client():
-    token = os.getenv("HF_TOKEN")
-    return InferenceClient(token=token) if token else None
+def get_llm():
+    if not GEMINI_KEY:
+        return None
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    try:
+        return ChatGoogleGenerativeAI(
+            model=model_name,
+            google_api_key=GEMINI_KEY,
+            max_output_tokens=250,
+        )
+    except Exception as e:
+        logger.error(f"Error initializing ChatGoogleGenerativeAI: {e}")
+        return None
 
 @app.get("/")
 def read_root():
     return {
         "status": "healthy",
         "service": "Water Quality Potability & Treatment Recommendation API",
+        "provider": "Google Gemini",
         "docs_url": "/docs"
     }
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "gemini_configured": bool(GEMINI_KEY),
+        "vector_db_ready": vector_db is not None
+    }
 
 def extract_conditions(ph: float, tds: float, ec: float):
     failed, queries = [], []
@@ -113,16 +167,21 @@ def extract_conditions(ph: float, tds: float, ec: float):
 async def get_recommendation(data: WaterData):
     if data.potability == "POTABLE" and (6.5 <= data.ph <= 8.5) and data.tds_ppm <= 500:
         return RecommendationResponse(
-            status="POTABLE", failed_params=[],
-            cause="None", recommendation="Water is safe for general use."
+            status="POTABLE",
+            failed_params=[],
+            cause="None",
+            recommendation="Water is safe for general use."
         )
 
     failed_params, search_query = extract_conditions(data.ph, data.tds_ppm, data.ec_ms_cm)
     
     retrieved_text = ""
     if vector_db:
-        docs = vector_db.similarity_search(search_query, k=2)
-        retrieved_text = "\n".join([d.page_content for d in docs])
+        try:
+            docs = vector_db.similarity_search(search_query, k=2)
+            retrieved_text = "\n".join([d.page_content for d in docs])
+        except Exception as e:
+            logger.error(f"Error querying Chroma vector DB: {e}")
 
     prompt = f"""Context from Knowledge Base:
 {retrieved_text}
@@ -133,30 +192,38 @@ CRITICAL: To fit on a small microcontroller screen, keep the cause and EACH reco
 
 Format strictly as:
 Cause:
-- [Short cause under]
+- [Short cause under 8 words]
 
 Recommendation:
-1. [Short step under 10 words]
-2. [Short step under 10 words]
-3. [Short step under 10 words]"""
+1. [Short step under 8 words]
+2. [Short step under 8 words]
+3. [Short step under 8 words]"""
     
-    client = get_hf_client()
+    llm = get_llm()
     ai_output = None
-    if client:
+    if llm:
         try:
-            response = client.chat_completion(
-                model="Qwen/Qwen2.5-72B-Instruct",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=200,
-                temperature=0.1
-            )
-            ai_output = response.choices[0].message.content
+            response = llm.invoke(prompt)
+            if isinstance(response.content, str):
+                ai_output = response.content
+            elif isinstance(response.content, list):
+                parts = []
+                for part in response.content:
+                    if isinstance(part, dict):
+                        parts.append(part.get("text", ""))
+                    elif hasattr(part, "text"):
+                        parts.append(part.text)
+                    else:
+                        parts.append(str(part))
+                ai_output = "".join(parts)
+            else:
+                ai_output = str(response.content)
         except Exception as e:
-            logger.error(f"InferenceClient error: {e}")
+            logger.error(f"Gemini LLM error: {e}")
             ai_output = None
 
-    if not ai_output:
-        ai_output = "Cause: Parameter threshold breached. Recommendation: Retest water after treatment."
+    if not ai_output or not ai_output.strip():
+        ai_output = "Cause:\n- Parameter threshold breached\n\nRecommendation:\n1. Calibrate sensors\n2. Inspect filtration\n3. Retest water sample"
 
     return RecommendationResponse(
         status="NOT POTABLE",
