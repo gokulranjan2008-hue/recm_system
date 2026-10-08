@@ -14,7 +14,8 @@ from pydantic import BaseModel
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings # Switched to local embeddings
+# Remove: from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_chroma import Chroma
 from huggingface_hub import InferenceClient
 
@@ -47,8 +48,8 @@ async def lifespan(app: FastAPI):
     print("Initializing Cloud Vector DB...")
     
     # Initialize the model locally instead of querying the Hugging Face API
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001"
     )
 
     if os.path.exists(DB_DIR) and os.listdir(DB_DIR):

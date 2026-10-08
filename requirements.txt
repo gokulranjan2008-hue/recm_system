@@ -4,11 +4,8 @@ pydantic
 langchain
 langchain-community
 langchain-chroma
-langchain-huggingface
-huggingface-hub
+langchain-text-splitters
 pypdf
+huggingface-hub
 python-dotenv
-pysqlite3-binary; sys_platform == 'linux'
---extra-index-url https://download.pytorch.org/whl/cpu
-torch
-sentence-transformers
+langchain-google-genai
