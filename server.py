@@ -225,9 +225,23 @@ Recommendation:
     if not ai_output or not ai_output.strip():
         ai_output = "Cause:\n- Parameter threshold breached\n\nRecommendation:\n1. Calibrate sensors\n2. Inspect filtration\n3. Retest water sample"
 
+    # Split the AI's response into Cause and Recommendation
+    ai_cause = f"Failed: {', '.join(failed_params)}"
+    ai_rec = ai_output.strip()
+    
+    if "Recommendation:" in ai_output:
+        parts = ai_output.split("Recommendation:")
+        raw_cause = parts[0].replace("Cause:", "").strip()
+        # Clean up bullet points from the AI cause
+        if raw_cause.startswith("-"):
+            raw_cause = raw_cause[1:].strip()
+        if raw_cause:
+            ai_cause = raw_cause
+        ai_rec = parts[1].strip()
+
     return RecommendationResponse(
         status="NOT POTABLE",
         failed_params=failed_params,
-        cause=f"Failed: {', '.join(failed_params)}",
-        recommendation=ai_output.strip()
+        cause=ai_cause,             
+        recommendation=ai_rec       
     )
