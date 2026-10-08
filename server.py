@@ -187,17 +187,17 @@ async def get_recommendation(data: WaterData):
 {retrieved_text}
 
 Failed Parameters: {', '.join(failed_params)}.
-Based ONLY on the context, provide a root cause and exactly 3 recommendation steps.
-CRITICAL: To fit on a small microcontroller screen, keep the cause and EACH recommendation step strictly under 8 words. Do not use long sentences.
+Based ONLY on the context, provide a root cause and exactly 3 recommendation steps. 
+Use the exact technical terminology, hardware specifications, and chemical treatments mentioned in the text. 
 
 Format strictly as:
 Cause:
-- [Short cause under 8 words]
+- [Technical cause]
 
 Recommendation:
-1. [Short step under 8 words]
-2. [Short step under 8 words]
-3. [Short step under 8 words]"""
+1. [Technical step 1]
+2. [Technical step 2]
+3. [Technical step 3]"""
     
     llm = get_llm()
     ai_output = None
